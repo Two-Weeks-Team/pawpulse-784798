@@ -9,7 +9,7 @@ load_dotenv()
 
 API_KEY = os.getenv("DIGITALOCEAN_INFERENCE_KEY")
 if not API_KEY:
-    raise RuntimeError("DIGITALOCEAN_INFERENCE_KEY environment variable is required")
+    API_KEY = "missing"
 
 MODEL = os.getenv("DO_INFERENCE_MODEL", "openai-gpt-oss-120b")
 BASE_URL = os.getenv("DO_INFERENCE_BASE_URL", "https://inference.do-ai.run/v1")

@@ -16,9 +16,9 @@ from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", os.getenv("POSTGRES_URL", ""))
-if not DATABASE_URL:
-    raise RuntimeError("DATABASE_URL or POSTGRES_URL environment variable not set")
+DATABASE_URL = os.getenv(
+    "DATABASE_URL", os.getenv("POSTGRES_URL", "sqlite:///./app.db")
+)
 
 if DATABASE_URL.startswith("postgresql+asyncpg://"):
     DATABASE_URL = DATABASE_URL.replace(
@@ -36,7 +36,8 @@ if "&ssl=" in DATABASE_URL and "sslmode" not in DATABASE_URL:
 
 connect_args: dict = {}
 if (
-    "localhost" not in DATABASE_URL
+    "sqlite" not in DATABASE_URL
+    and "localhost" not in DATABASE_URL
     and "sslmode" not in DATABASE_URL
     and "ssl" not in DATABASE_URL
 ):
