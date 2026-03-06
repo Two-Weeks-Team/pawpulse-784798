@@ -5,14 +5,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from .models import get_session, Pet, HealthLog
-from .ai_service import check_symptoms, generate_report
+from models import get_session, Pet, HealthLog
+from ai_service import check_symptoms, generate_report
 
 router = APIRouter()
 
-# -------------------------------------------------------------------
-# Dependency that yields a DB session and ensures it is closed.
-# -------------------------------------------------------------------
+
 def get_db():
     db = get_session()
     try:
@@ -20,42 +18,37 @@ def get_db():
     finally:
         db.close()
 
-# -------------------------------------------------------------------
-# Pydantic schemas for request / response payloads
-# -------------------------------------------------------------------
+
 class SymptomCheckRequest(BaseModel):
     pet_id: int
     symptom_text: str = Field(..., max_length=2000)
     photo_url: Optional[str] = None
+
 
 class ConditionItem(BaseModel):
     name: str
     confidence: float
     urgency: str
 
+
 class SymptomCheckResponse(BaseModel):
     conditions: List[ConditionItem]
+
 
 class ReportRequest(BaseModel):
     pet_id: int
     start_date: datetime
     end_date: datetime
 
+
 class ReportResponse(BaseModel):
     report_text: str
 
-# -------------------------------------------------------------------
-# AI‑powered endpoints
-# -------------------------------------------------------------------
+
 @router.post("/ai/symptom_check", response_model=SymptomCheckResponse)
 async def symptom_check(
     payload: SymptomCheckRequest, db: Session = Depends(get_db)
 ) -> SymptomCheckResponse:
-    """Validate the pet and forward the request to the DigitalOcean inference service.
-
-    The AI model is expected to return a JSON object with a top‑level ``conditions``
-    array. Each element contains ``name``, ``confidence`` and ``urgency`` keys.
-    """
     pet = db.get(Pet, payload.pet_id)
     if not pet:
         raise HTTPException(status_code=404, detail="Pet not found")
@@ -75,7 +68,6 @@ async def symptom_check(
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc))
 
-    # The model returns a dict with a ``conditions`` key; validate shape quickly.
     conditions = result.get("conditions", [])
     return SymptomCheckResponse(conditions=conditions)
 
@@ -84,11 +76,6 @@ async def symptom_check(
 async def generate_report_endpoint(
     payload: ReportRequest, db: Session = Depends(get_db)
 ) -> ReportResponse:
-    """Create a health summary report for a pet over a given time window.
-
-    The endpoint aggregates health logs from the database, forwards them to the
-    AI model, and returns the generated textual report.
-    """
     pet = db.get(Pet, payload.pet_id)
     if not pet:
         raise HTTPException(status_code=404, detail="Pet not found")
@@ -130,5 +117,5 @@ async def generate_report_endpoint(
     report_text = result.get("report", "")
     return ReportResponse(report_text=report_text)
 
-# Export a router that ``main.py`` can include.
+
 api_router = router

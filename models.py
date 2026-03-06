@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+
 from dotenv import load_dotenv
 from sqlalchemy import (
     Column,
@@ -9,30 +10,35 @@ from sqlalchemy import (
     DateTime,
     Boolean,
     ForeignKey,
+    create_engine,
 )
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
-from sqlalchemy import create_engine
 
 load_dotenv()
 
-# ---------------------------------------------------------------
-# Database configuration
-# ---------------------------------------------------------------
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+psycopg://postgres:postgres@localhost/pawpulse",
-)
+DATABASE_URL = os.getenv("DATABASE_URL", os.getenv("POSTGRES_URL", ""))
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL or POSTGRES_URL environment variable not set")
 
-engine = create_engine(DATABASE_URL, echo=False, future=True)
-SessionLocal = sessionmaker(
-    bind=engine, autoflush=False, autocommit=False, future=True
-)
+if DATABASE_URL.startswith("postgresql+asyncpg://"):
+    DATABASE_URL = DATABASE_URL.replace(
+        "postgresql+asyncpg://", "postgresql+psycopg://", 1
+    )
+elif DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg://", 1)
+elif DATABASE_URL.startswith("postgresql://") and "+psycopg" not in DATABASE_URL:
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
+
+connect_args: dict = {}
+if "localhost" not in DATABASE_URL and "sslmode" not in DATABASE_URL:
+    connect_args["sslmode"] = "require"
+
+engine = create_engine(DATABASE_URL, echo=False, future=True, connect_args=connect_args)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
 
 Base = declarative_base()
 
-# ---------------------------------------------------------------
-# ORM models
-# ---------------------------------------------------------------
+
 class User(Base):
     __tablename__ = "users"
 
@@ -70,13 +76,10 @@ class HealthLog(Base):
 
     pet = relationship("Pet", back_populates="logs")
 
-# ---------------------------------------------------------------
-# Helper utilities for FastAPI dependencies
-# ---------------------------------------------------------------
+
 def get_engine():
-    """Expose the SQLAlchemy engine for migrations or startup tasks."""
     return engine
 
+
 def get_session():
-    """Create a new SQLAlchemy session. FastAPI will manage its lifecycle."""
     return SessionLocal()
