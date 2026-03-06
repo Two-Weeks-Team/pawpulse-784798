@@ -50,7 +50,7 @@ Base = declarative_base()
 
 
 class User(Base):
-    __tablename__ = "users"
+    __tablename__ = "pp_users"
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
@@ -61,24 +61,24 @@ class User(Base):
 
 
 class Pet(Base):
-    __tablename__ = "pets"
+    __tablename__ = "pp_pets"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
     breed = Column(String(100))
     age_years = Column(Integer)
     weight_kg = Column(Integer)
-    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    owner_id = Column(Integer, ForeignKey("pp_users.id"), nullable=False)
 
     owner = relationship("User", back_populates="pets")
     logs = relationship("HealthLog", back_populates="pet")
 
 
 class HealthLog(Base):
-    __tablename__ = "health_logs"
+    __tablename__ = "pp_health_logs"
 
     id = Column(Integer, primary_key=True, index=True)
-    pet_id = Column(Integer, ForeignKey("pets.id"), nullable=False)
+    pet_id = Column(Integer, ForeignKey("pp_pets.id"), nullable=False)
     logged_at = Column(DateTime, default=datetime.utcnow)
     symptom_text = Column(Text, nullable=False)
     photo_url = Column(String(500))
